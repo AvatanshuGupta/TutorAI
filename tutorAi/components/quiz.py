@@ -4,11 +4,19 @@ from pydantic import BaseModel,Field
 from typing import Annotated
 from langchain_core.prompts import PromptTemplate   
 from langchain_core.output_parsers import PydanticOutputParser
+from tutorAi.components.pdf_reader import pdfDocs
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+import re,json
 import os
 load_dotenv()
 
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash",api_key=os.getenv("GOOGLE_API_KEY_ABH"))
+
+splitter=RecursiveCharacterTextSplitter(
+    chunk_size=2000,        
+    chunk_overlap=500, 
+)
 
 class Quiz(BaseModel):
     question : Annotated[str,Field(title="Question",lt=100,gt=15,description="Question based on the given context it should be relevent meaningfull and straightforward and it should have 4 option out of which only one is correct leave the question blank if you cant make a question out of the provided question make strictly sure to not add anything on your own DONT HALLUCINATE ")]
@@ -58,3 +66,25 @@ template=PromptTemplate(
     partial_variables={'format':parser.get_format_instructions()}
     
 )      
+
+class QuizBuilder():
+    def __init__(self,file):
+        self.file=file
+
+    def generate_quiz(self):
+        docs=pdfDocs(self.file)
+        docobj=splitter.split_documents(docs)
+
+        page_content=[]
+        for doc in docobj:
+            page_content.append(doc.page_content)
+        
+        result_list=[]
+        for page in page_content:
+            prompt=template.invoke({"context":page})
+            res=llm.invoke(prompt)
+            cleaned = re.sub(r"^```json\s*|\s*```$", "", res.content.strip())
+            parsed = json.loads(cleaned) 
+            result_list.append(parsed)
+        
+        return result_list
