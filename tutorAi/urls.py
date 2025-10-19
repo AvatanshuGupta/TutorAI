@@ -20,5 +20,6 @@ from django.urls import path
 from tutorAi  import views
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("",views.home)
+    path("",views.upload_pdf),
+    path("dashboard/",views.dashboard)
 ]
