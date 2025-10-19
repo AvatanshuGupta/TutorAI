@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.core.files.storage import FileSystemStorage
 from tutorAi.components.pdf_reader import pdfReader
 from tutorAi import settings
+from tutorAi.components.flashcard import flash
 import os
 
 MAX_PDF_PAGE=40
@@ -26,6 +27,10 @@ def upload_pdf(request):
 
             print(docs)
 
+            flashobj=flash(file_path)
+            flashcard_list=flashobj.generate_flashcard()
+            print(flashcard_list)
+
             request.session["pdf_path"] = file_path
             request.session["pdf_name"] = pdf_file.name
 
@@ -35,7 +40,7 @@ def upload_pdf(request):
         except Exception as e:
             fs.delete(filename)
             return render(request, "home.html", {
-                "error_message": f"An error occurred during file processing: {e}"
+                "error_message": "An error occurred during file processing"
             })
 
     return render(request, "home.html")
