@@ -3,6 +3,7 @@ from django.core.files.storage import FileSystemStorage
 from tutorAi.components.pdf_reader import pdfReader
 from tutorAi import settings
 import os
+
 MAX_PDF_PAGE=40
 
 def upload_pdf(request):
@@ -12,15 +13,29 @@ def upload_pdf(request):
         filename = fs.save(pdf_file.name, pdf_file)
 
         file_path = os.path.join(settings.MEDIA_ROOT, 'temp', filename)
-        docs,len=pdfReader(file_path)
+        
 
-        print(docs)
+        try:
+            docs,page_count=pdfReader(file_path)
+            if page_count>MAX_PDF_PAGE:
+                fs.delete(filename)
+                return render(request,'home.html',{
+                    "error_message": f"PDF is too large. Max pages allowed is {MAX_PDF_PAGE}, but your file has {page_count} pages."
+                })
+        
 
-        request.session["pdf_path"] = file_path
-        request.session["pdf_name"] = pdf_file.name
+            print(docs)
 
-        return render(request, "dashboard.html", {
-                "pdf_name": pdf_file.name,
+            request.session["pdf_path"] = file_path
+            request.session["pdf_name"] = pdf_file.name
+
+            return render(request, "dashboard.html", {
+                    "pdf_name": pdf_file.name,
+                })
+        except Exception as e:
+            fs.delete(filename)
+            return render(request, "home.html", {
+                "error_message": f"An error occurred during file processing: {e}"
             })
 
     return render(request, "home.html")
