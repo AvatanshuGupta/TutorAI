@@ -13,12 +13,13 @@ import json
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 import os
+import re
 load_dotenv()
 
 MAX_PDF_PAGE=40
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",api_key=os.getenv("GOOGLE_API_KEY_AVG"))
-llm2 = ChatGoogleGenerativeAI(model="gemma-3-27b",api_key=os.getenv("GOOGLE_API_KEY_VIK"))
+llm2 = ChatGoogleGenerativeAI(model="gemma-3-27b",api_key=os.getenv("GOOGLE_API_KEY_LUC"))
 
 
 chat_template = ChatPromptTemplate.from_messages([
@@ -68,6 +69,7 @@ def upload_pdf(request):
                 print(f"Embedding failed due to: {embed_e}")
 
             print("7")
+            request.session.flush()
             request.session["pdf_path"] = file_path
             request.session["pdf_name"] = pdf_file.name
             print("8")
@@ -110,16 +112,20 @@ def chat_with_pdf(request):
         if NEED_RETRIEVAL:
             # Call the function from embedding.py
             context_list = similar_embedding(user_query)
+            print(context_list)
             context = "\n---\n".join(context_list)
-            
+            print(context)
         # 3. Invoke LLM
         prompt = chat_template.invoke({
             'chat_hist': chat_hist,
-            'query': user_query,
+            'query': user_query, 
             'context': context
         })
+        print(NEED_RETRIEVAL)
 
-        assistant_response_content = llm.invoke(prompt).content
+        response_content = llm.invoke(prompt).content
+        assistant_response_content = re.sub(r'(\*|_)+', '', response_content)
+
 
         chat_hist_data.append({'type': 'human', 'content': user_query})
         chat_hist_data.append({'type': 'ai', 'content': assistant_response_content})
@@ -143,6 +149,7 @@ def dashboard(request):
             flashobj=flash(file_path)
             flashcard_list=flashobj.generate_flashcard()
             print(flashcard_list)
+      
         except Exception as e:
              print(f"flashcard failed due to {e}") 
 
@@ -150,6 +157,7 @@ def dashboard(request):
             quizobj=QuizBuilder(file_path)
             quiz_list=quizobj.generate_quiz()
             print(quiz_list)
+    
         except Exception as e:
              print(f"quiz failed due to {e}") 
 
