@@ -1,2 +1,4 @@
 /tvenv
 .env
+vector_store_db
+media/temp
