@@ -145,9 +145,13 @@ def chat_with_pdf(request):
 def dashboard(request):
         print("hello")
         file_path = request.session.get("pdf_path")
+        file_name = request.session.get("pdf_name")
+        quiz_list=[]
+        flashcard_list=[]
         try:
             flashobj=flash(file_path)
             flashcard_list=flashobj.generate_flashcard()
+            request.session['flashcards'] = flashcard_list
             print(flashcard_list)
       
         except Exception as e:
@@ -156,9 +160,18 @@ def dashboard(request):
         try:
             quizobj=QuizBuilder(file_path)
             quiz_list=quizobj.generate_quiz()
+            request.session['quiz'] = quiz_list
             print(quiz_list)
     
         except Exception as e:
              print(f"quiz failed due to {e}") 
 
-        return render(request,'dashboard.html')
+        return render(request,'dashboard.html',{'pdf_name':file_name})
+
+def flashcards_view(request):
+    flashcards = request.session.get('flashcards', [])
+    return render(request, 'flashcards.html', {'flashcards': flashcards})
+
+def quiz_view(request):
+    quiz= request.session.get('quiz',[])
+    return render(request, 'quiz.html', {'quiz': quiz})

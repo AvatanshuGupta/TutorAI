@@ -22,5 +22,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("",views.upload_pdf),
     path("dashboard/",views.dashboard,name="dashboard"),
-    path("chat/",views.chat_with_pdf,name="chat_api")
+    path("chat/",views.chat_with_pdf,name="chat_api"),
+    path("quiz/",views.quiz_view,name="quiz"),
+    path('flashcards/', views.flashcards_view, name='flashcards'),
 ]

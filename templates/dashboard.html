@@ -7,6 +7,19 @@
 </head>
 <body>
     <h1>Welcome to TutorAI !</h1>
+    <div class="flex justify-center mt-6">
+    <a href="{% url 'flashcards' %}" 
+        class="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition">
+        📚 View Flashcards
+    </a>
+    </div>
+    <div class="flex justify-center mt-6">
+    <a href="{% url 'quiz' %}" 
+        class="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition">
+        📚 Let's take a quiz
+    </a>
+    </div>
+
     <section class="chat-section" style="margin-top: 20px;">
     <h3>Tutor Chat</h3>
     <div id="chat-box" style="height: 350px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
