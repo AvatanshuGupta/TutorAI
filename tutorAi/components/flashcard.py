@@ -48,7 +48,7 @@ class flash:
     def __init__(self,file):
         self.file=file
     def generate_flashcard(self):
-        docs=pdfDocs(self.file)
+        docs,_=pdfDocs(self.file)
         splitter=RecursiveCharacterTextSplitter(
             chunk_size=2000,        
             chunk_overlap=500, 

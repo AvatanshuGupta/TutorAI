@@ -7,5 +7,116 @@
 </head>
 <body>
     <h1>Welcome to TutorAI !</h1>
+    <section class="chat-section" style="margin-top: 20px;">
+    <h3>💬 Tutor Chat</h3>
+    <div id="chat-box" style="height: 350px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
+        <div style="color: gray; margin-bottom: 10px;">
+            <strong>TutorAi:</strong> Hello! I've analyzed your PDF ({{ pdf_name }}). Ask me any question about the content!
+        </div>
+        </div>
+
+    <div class="chat-input-area" style="display: flex; margin-top: 10px;">
+        <input type="text" id="chat-input" placeholder="Type your question..." style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px 0 0 4px;">
+        <button onclick="sendMessage()" style="padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 0 4px 4px 0; cursor: pointer;">Send</button>
+    </div>
+</section>
+
+<script>
+    // 1. Utility to get CSRF token (required for Django POST requests)
+    function getCookie(name) {
+        // ... (standard CSRF cookie retrieval function from previous steps) ...
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // 2. Display Message Function
+    function displayMessage(message, sender) {
+        const chatBox = document.getElementById('chat-box');
+        const msgElement = document.createElement('div');
+        msgElement.className = (sender === 'You' ? 'user-message' : 'ai-message');
+        
+        let style = "margin-bottom: 8px; padding: 8px; border-radius: 12px;";
+        if (sender === 'You') {
+            style += "background-color: #d1e7ff; margin-left: auto; width: fit-content; max-width: 80%; text-align: right;";
+        } else {
+            style += "background-color: #e9ecef; margin-right: auto; width: fit-content; max-width: 80%;";
+        }
+
+        msgElement.setAttribute('style', style);
+        msgElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+        chatBox.appendChild(msgElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return msgElement; // Return for possible loading state removal
+    }
+
+    // 3. Send Message Function (Main Logic)
+    async function sendMessage() {
+        const inputElement = document.getElementById('chat-input');
+        const query = inputElement.value.trim();
+
+        if (!query) return;
+
+        // A. Display user message
+        displayMessage(query, 'You');
+        inputElement.value = '';
+        inputElement.disabled = true; // Disable input while waiting
+
+        // B. Display loading message
+        const loadingElement = displayMessage('...', 'TutorAi');
+        
+        try {
+            const response = await fetch('{% url "chat_api" %}', { // Use the named URL
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken 
+                },
+                body: JSON.stringify({ 'query': query })
+            });
+
+            const data = await response.json();
+
+            // C. Remove loading message
+            loadingElement.remove();
+
+            if (data.response) {
+                // D. Display assistant response
+                displayMessage(data.response, 'TutorAi');
+            } else if (data.error) {
+                displayMessage(`Error: ${data.error}`, 'System');
+            }
+
+        } catch (error) {
+            console.error('Fetch error:', error);
+            loadingElement.remove();
+            displayMessage('Connection failed. Please try again.', 'System');
+        } finally {
+            // E. Re-enable input
+            inputElement.disabled = false;
+            inputElement.focus();
+        }
+    }
+    
+    // Optional: Send on Enter key
+    document.getElementById('chat-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+</script>
+
 </body>
+
+
 </html>

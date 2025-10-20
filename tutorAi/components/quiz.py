@@ -72,7 +72,7 @@ class QuizBuilder():
         self.file=file
 
     def generate_quiz(self):
-        docs=pdfDocs(self.file)
+        docs,_=pdfDocs(self.file)
         docobj=splitter.split_documents(docs)
 
         page_content=[]
