@@ -3,141 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DashBoard</title>
+    <title>Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Welcome to TutorAI !</h1>
-    <div class="flex justify-center mt-6">
-    <a href="{% url 'flashcards' %}" 
-        class="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition">
-        📚 View Flashcards
-    </a>
-    </div>
-    <div class="flex justify-center mt-6">
-    <a href="{% url 'quiz' %}" 
-        class="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition">
-        📚 Let's take a quiz
-    </a>
+<body class="bg-gray-900 text-white flex flex-col sm:flex-row min-h-screen p-8 gap-8">
+
+    <!-- Left panel: Quiz & Flashcard links -->
+    <div class="flex flex-col gap-6">
+        <h1 class="text-4xl font-bold text-blue-400 mb-6">Welcome to TutorAI!</h1>
+        <a href="{% url 'flashcards' %}" 
+           class="bg-blue-600 hover:bg-blue-700 w-[400px] h-[180px] font-bold flex items-center justify-center transition text-white px-12 py-4 rounded-2xl text-3xl font-semibold text-left">
+           View Flashcards
+        </a>
+        <a href="{% url 'quiz' %}" 
+           class="bg-green-600 hover:bg-green-700 w-[400px] h-[180px] font-bold flex items-center justify-center transition text-white px-12 py-4 rounded-2xl text-3xl font-semibold text-left">
+          Let's Take a Quiz
+          
+        </a>
     </div>
 
-    <section class="chat-section" style="margin-top: 20px;">
-    <h3>Tutor Chat</h3>
-    <div id="chat-box" style="height: 350px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
-        <div style="color: gray; margin-bottom: 10px;">
-            <strong>TutorAi:</strong> Hello! I've analyzed your PDF ({{ pdf_name }}). Ask me any question about the content!
+    <!-- Right panel: Chat Section -->
+    <section class="chat-section flex-grow max-w-3xl flex flex-col">
+        <h3 class="text-2xl font-bold text-blue-400 mb-4 text-center">Tutor Chat</h3>
+        <div id="chat-box" class="flex-grow h-[580px] overflow-y-auto p-6 rounded-xl bg-gray-800 border border-gray-700 mb-4">
+            <div class="mb-2 text-gray-400">
+                <strong>TutorAi:</strong> Hello! I've analyzed your PDF ({{ pdf_name }}). Ask me any question about the content!
+            </div>
         </div>
+
+        <div class="flex gap-2">
+            <input type="text" id="chat-input" placeholder="Type your question..."
+                   class="flex-grow px-4 py-3 rounded-l-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button onclick="sendMessage()"
+                    class="px-6 py-3 rounded-r-xl bg-blue-600 hover:bg-blue-700 transition font-semibold">
+                Send
+            </button>
         </div>
+    </section>
 
-    <div class="chat-input-area" style="display: flex; margin-top: 10px;">
-        <input type="text" id="chat-input" placeholder="Type your question..." style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px 0 0 4px;">
-        <button onclick="sendMessage()" style="padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 0 4px 4px 0; cursor: pointer;">Send</button>
-    </div>
-</section>
-
-<script>
-    // === 1. CSRF Helper ===
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+    <script>
+        // === CSRF Helper ===
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
                 }
             }
+            return cookieValue;
         }
-        return cookieValue;
-    }
-    const csrftoken = getCookie('csrftoken');
+        const csrftoken = getCookie('csrftoken');
 
-    // === 2. Display Message Utility ===
-    function displayMessage(message, sender) {
-        const chatBox = document.getElementById('chat-box');
-        const msgElement = document.createElement('div');
-        msgElement.className = (sender === 'You' ? 'user-message' : 'ai-message');
-        
-        let style = "margin-bottom: 8px; padding: 8px; border-radius: 12px;";
-        if (sender === 'You') {
-            style += "background-color: #d1e7ff; margin-left: auto; width: fit-content; max-width: 80%; text-align: right;";
-        } else {
-            style += "background-color: #e9ecef; margin-right: auto; width: fit-content; max-width: 80%; white-space: pre-wrap;";
-        }
-
-        msgElement.setAttribute('style', style);
-        msgElement.innerHTML = `<strong>${sender}:</strong> <span class="msg-text">${message}</span>`;
-        chatBox.appendChild(msgElement);
-        chatBox.scrollTop = chatBox.scrollHeight;
-        return msgElement.querySelector('.msg-text');
-    }
-
-    // === 3. Streaming Message Function ===
-    async function sendMessage() {
-        const inputElement = document.getElementById('chat-input');
-        const query = inputElement.value.trim();
-        if (!query) return;
-
-        // A. Display user message
-        displayMessage(query, 'You');
-        inputElement.value = '';
-        inputElement.disabled = true;
-
-        // B. Create placeholder for AI response
-        const aiMessageElement = displayMessage('', 'TutorAi');
-
-        try {
-            const response = await fetch('{% url "chat_api" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
-                },
-                body: JSON.stringify({ 'query': query })
-            });
-
-            if (!response.ok || !response.body) {
-                aiMessageElement.textContent = "Error: Unable to get response.";
-                return;
+        // === Display Message Utility ===
+        function displayMessage(message, sender) {
+            const chatBox = document.getElementById('chat-box');
+            const msgElement = document.createElement('div');
+            msgElement.className = (sender === 'You' ? 'user-message' : 'ai-message');
+            
+            let style = "margin-bottom: 10px; padding: 12px; border-radius: 14px; max-width: 80%;";
+            if (sender === 'You') {
+                style += "background-color: #1e3a8a; margin-left: auto; text-align: right;";
+            } else {
+                style += "background-color: #2d3748; margin-right: auto; white-space: pre-wrap;";
             }
 
-            // === STREAMING PART ===
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let partialText = '';
+            msgElement.setAttribute('style', style);
+            msgElement.innerHTML = `<strong>${sender}:</strong> <span class="msg-text">${message}</span>`;
+            chatBox.appendChild(msgElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return msgElement.querySelector('.msg-text');
+        }
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+        // === Streaming Message Function ===
+        async function sendMessage() {
+            const inputElement = document.getElementById('chat-input');
+            const query = inputElement.value.trim();
+            if (!query) return;
 
-                const chunk = decoder.decode(value, { stream: true });
-                partialText += chunk;
+            displayMessage(query, 'You');
+            inputElement.value = '';
+            inputElement.disabled = true;
 
-                // Update UI in real time
-                aiMessageElement.textContent = partialText;
-                const chatBox = document.getElementById('chat-box');
-                chatBox.scrollTop = chatBox.scrollHeight;
+            const aiMessageElement = displayMessage('', 'TutorAi');
+
+            try {
+                const response = await fetch('{% url "chat_api" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ 'query': query })
+                });
+
+                if (!response.ok || !response.body) {
+                    aiMessageElement.textContent = "Error: Unable to get response.";
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let partialText = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    partialText += chunk;
+
+                    aiMessageElement.textContent = partialText;
+                    const chatBox = document.getElementById('chat-box');
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+
+            } catch (error) {
+                console.error('Streaming fetch failed:', error);
+                aiMessageElement.textContent = "Connection failed. Please try again.";
+            } finally {
+                inputElement.disabled = false;
+                inputElement.focus();
             }
-
-        } catch (error) {
-            console.error('Streaming fetch failed:', error);
-            aiMessageElement.textContent = "Connection failed. Please try again.";
-        } finally {
-            inputElement.disabled = false;
-            inputElement.focus();
         }
-    }
 
-    // === 4. Send on Enter ===
-    document.getElementById('chat-input').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-</script>
-
+        document.getElementById('chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
 
 </body>
-
-
 </html>

@@ -1,78 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flashcard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcards</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Fade + slide animation */
+    .fade-enter {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .fade-enter-active {
+      opacity: 1;
+      transform: translateY(0);
+      transition: all 0.5s ease;
+    }
+    .fade-exit {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .fade-exit-active {
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.4s ease;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-gray-900 text-white flex flex-col justify-center items-center min-h-screen p-4">
 
+  <!-- Pass flashcards from Django -->
+  {{ flashcards|json_script:"flashcards-data" }}
 
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-10">
-  <div class="bg-white shadow-xl rounded-2xl p-8 w-[90%] sm:w-[600px] text-center">
-    <h1 class="text-2xl font-semibold text-blue-600 mb-6">📘 Flashcards</h1>
+  <div class="bg-gray-800 shadow-2xl rounded-3xl p-8 w-full sm:w-[600px] text-center relative overflow-hidden">
 
-    {% if flashcards %}
-      <div id="flashcard" class="text-gray-800 text-lg leading-relaxed mb-6">
-        {{ flashcards.0 }}
-      </div>
+    <h1 class="text-3xl font-bold text-blue-400 mb-6">Flashcards</h1>
 
-      <div class="flex justify-between mt-4">
-        <button id="prevBtn" class="bg-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400" disabled>
-          ⬅ Previous
-        </button>
-        <button id="nextBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          Next ➡
-        </button>
-      </div>
+    <div id="flashcard" class="text-lg leading-relaxed mb-6 p-4 rounded-xl bg-gray-700 transition"></div>
 
-      <p id="counter" class="mt-4 text-gray-500 text-sm">
-        1 of {{ flashcards|length }}
-      </p>
-    {% else %}
-      <p class="text-gray-600">No flashcards available yet.</p>
-    {% endif %}
-
-    <div class="mt-8">
-      <a href="{% url 'dashboard' %}" class="text-blue-500 hover:underline">⬅ Back to Dashboard</a>
+    <div class="flex justify-between mt-4">
+      <button id="prevBtn" class="bg-gray-600 px-4 py-2 rounded-lg hover:bg-gray-500" disabled>
+        Previous
+      </button>
+      <button id="nextBtn" class="bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700">
+        Next
+      </button>
     </div>
-  </div>
-</div>
 
-{% if flashcards %}
-<script>
+    <p id="counter" class="mt-4 text-gray-400 text-sm"></p>
 
-  const flashcards = {{ flashcards|safe }};
-  let current = 0;
-
-  const flashcardDiv = document.getElementById('flashcard');
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-  const counter = document.getElementById('counter');
-
-  function updateCard() {
-    flashcardDiv.textContent = flashcards[current];
-    counter.textContent = `${current + 1} of ${flashcards.length}`;
-    prevBtn.disabled = current === 0;
-    nextBtn.disabled = current === flashcards.length - 1;
-  }
-
-  prevBtn.addEventListener('click', () => {
-    if (current > 0) {
-      current--;
-      updateCard();
-    }
-  });
-
-  nextBtn.addEventListener('click', () => {
-    if (current < flashcards.length - 1) {
-      current++;
-      updateCard();
-    }
-  });
-  
-</script>
-{% endif %}
     
+  </div>
+
+  <script>
+    const flashcards = JSON.parse(document.getElementById('flashcards-data').textContent);
+
+    let currentIndex = 0;
+
+    const flashcardEl = document.getElementById('flashcard');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const counter = document.getElementById('counter');
+
+    function updateFlashcard() {
+      // Fade out
+      flashcardEl.classList.add('fade-exit', 'fade-exit-active');
+      setTimeout(() => {
+        flashcardEl.classList.remove('fade-exit', 'fade-exit-active');
+
+        // Update content
+        flashcardEl.textContent = flashcards[currentIndex];
+
+        // Fade in
+        flashcardEl.classList.add('fade-enter');
+        setTimeout(() => {
+          flashcardEl.classList.add('fade-enter-active');
+        }, 20);
+        setTimeout(() => {
+          flashcardEl.classList.remove('fade-enter', 'fade-enter-active');
+        }, 500);
+
+        // Update buttons
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === flashcards.length - 1;
+
+        // Update counter
+        counter.textContent = `${currentIndex + 1} of ${flashcards.length}`;
+      }, 300);
+    }
+
+    prevBtn.addEventListener('click', () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateFlashcard();
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentIndex < flashcards.length - 1) {
+        currentIndex++;
+        updateFlashcard();
+      }
+    });
+
+    // Initialize
+    if (flashcards.length > 0) {
+      updateFlashcard();
+    } else {
+      flashcardEl.textContent = "No flashcards available.";
+    }
+  </script>
 </body>
 </html>
