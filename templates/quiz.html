@@ -1,11 +1,217 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Quiz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Smooth fade animations */
+    .fade-enter {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    .fade-enter-active {
+      opacity: 1;
+      transform: translateY(0);
+      transition: all 0.5s ease;
+    }
+    .fade-exit {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .fade-exit-active {
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.4s ease;
+    }
+
+        /* Dark theme tweaks */
+    #options-container button {
+      background-color: #2d2d2d;
+      color: #e0e0e0;
+      border-color: #444;
+    }
+    #options-container button:hover {
+      background-color: #3b3b3b;
+    }
+    #options-container button.bg-green-200 {
+      background-color: #22543d !important;
+      color: #a7f3d0 !important;
+      border-color: #2f855a !important;
+    }
+    #options-container button.bg-red-200 {
+      background-color: #742a2a !important;
+      color: #feb2b2 !important;
+      border-color: #c53030 !important;
+    }
+
+  </style>
 </head>
-<body>
-    
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen p-4 text-gray-100">
+
+    {{ quiz|json_script:"quiz-data" }}
+
+  <div class="bg-gray-800 shadow-2xl rounded-3xl p-8 w-full sm:w-2/3 lg:w-1/2 relative overflow-hidden">
+
+    <h1 class="text-3xl font-bold text-center mb-6 text-blue-400">Smart Quiz</h1>
+
+    <!-- Progress Bar -->
+    <div class="w-full bg-gray-700 rounded-full h-3 mb-6">
+      <div id="progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-500 ease-in-out" style="width: 0%;"></div>
+    </div>
+
+    <div id="quiz-container" class="space-y-6">
+      <div id="question-container" class="text-xl font-semibold text-gray-200"></div>
+      <div id="options-container" class="space-y-3"></div>
+      <div id="feedback" class="text-center text-lg font-semibold"></div>
+      <div class="text-center">
+        <button id="next-btn" class="hidden mt-4 bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 transition">
+          Next
+        </button>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div id="result" class="hidden text-center fade-enter">
+      <h2 class="text-2xl font-bold text-green-400 mb-4">🎉 Quiz Completed!</h2>
+      <p id="score" class="text-lg text-gray-200"></p>
+      <button onclick="location.reload()" class="mt-6 bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 transition">
+        Restart Quiz
+      </button>
+    </div>
+  </div>
+
+
+</body>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
+
+  <script>
+    // Get quiz data from Django
+    const quizData = JSON.parse(document.getElementById('quiz-data').textContent);
+
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    const questionContainer = document.getElementById('question-container');
+    const optionsContainer = document.getElementById('options-container');
+    const feedback = document.getElementById('feedback');
+    const nextBtn = document.getElementById('next-btn');
+    const resultContainer = document.getElementById('result');
+    const quizContainer = document.getElementById('quiz-container');
+    const scoreDisplay = document.getElementById('score');
+    const progressBar = document.getElementById('progress-bar');
+
+    // Fade transition helper
+    function fadeTransition(element, newContentFn) {
+      element.classList.add('fade-exit');
+      element.classList.add('fade-exit-active');
+      setTimeout(() => {
+        element.classList.remove('fade-exit', 'fade-exit-active');
+        newContentFn();
+        element.classList.add('fade-enter');
+        setTimeout(() => {
+          element.classList.add('fade-enter-active');
+        }, 20);
+        setTimeout(() => {
+          element.classList.remove('fade-enter', 'fade-enter-active');
+        }, 500);
+      }, 300);
+    }
+
+    //Show question
+    function showQuestion() {
+      const currentQuestion = quizData[currentQuestionIndex];
+      feedback.textContent = '';
+      nextBtn.classList.add('hidden');
+
+      fadeTransition(questionContainer, () => {
+        questionContainer.textContent = `${currentQuestionIndex + 1}. ${currentQuestion.question}`;
+      });
+
+      fadeTransition(optionsContainer, () => {
+        optionsContainer.innerHTML = '';
+        for (let i = 1; i <= 4; i++) {
+          const optKey = `option${i}`;
+          const btn = document.createElement('button');
+          btn.className = "w-full text-left bg-gray-100 hover:bg-blue-100 border border-gray-300 px-4 py-3 rounded-xl transition";
+          btn.textContent = currentQuestion[optKey];
+          btn.onclick = () => checkAnswer(optKey, btn);
+          optionsContainer.appendChild(btn);
+        }
+      });
+
+      updateProgressBar();
+    }
+
+    //  Check answer
+    function checkAnswer(selectedOption, button) {
+      const currentQuestion = quizData[currentQuestionIndex];
+      const allButtons = optionsContainer.querySelectorAll('button');
+      allButtons.forEach(btn => btn.disabled = true);
+
+      if (selectedOption === currentQuestion.correctOption) {
+        score++;
+        feedback.textContent = '✅ Correct!';
+        feedback.className = 'text-green-600 font-semibold text-center';
+        button.classList.add('bg-green-200', 'border-green-500');
+      } else {
+        feedback.textContent = '❌ Wrong!';
+        feedback.className = 'text-red-600 font-semibold text-center';
+        button.classList.add('bg-red-200', 'border-red-500');
+        const correctBtn = [...allButtons].find(btn => 
+          btn.textContent === currentQuestion[currentQuestion.correctOption]
+        );
+        correctBtn.classList.add('bg-green-200', 'border-green-500');
+      }
+
+      nextBtn.classList.remove('hidden');
+    }
+
+    // Next question
+    nextBtn.addEventListener('click', () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < quizData.length) {
+        showQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    // Progress bar update
+    function updateProgressBar() {
+      const progress = ((currentQuestionIndex) / quizData.length) * 100;
+      progressBar.style.width = `${progress}%`;
+    }
+
+
+    function showResult() {
+    // Hide the quiz container
+    quizContainer.style.display = 'none';
+
+    // Show result container
+    resultContainer.style.display = 'block';
+
+    // Show final score
+    scoreDisplay.textContent = `Your Score: ${score} / ${quizData.length}`;
+
+    // Animate progress bar to 100%
+    progressBar.style.width = '100%';
+    gsap.fromTo("#result", 
+        { opacity: 0, y: 50 }, 
+        { opacity: 1, y: 0, duration: 0.8 }
+    );
+    }
+
+    // Initialize quiz
+    if (quizData.length > 0) {
+      showQuestion();
+    } else {
+      quizContainer.innerHTML = "<p class='text-center text-gray-600'>No quiz data found.</p>";
+    }
+  </script>
 </body>
 </html>
