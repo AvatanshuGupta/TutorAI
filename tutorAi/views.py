@@ -11,6 +11,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from django.http import JsonResponse
 import json
 from langchain_google_genai import ChatGoogleGenerativeAI
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 import os
 import re
@@ -148,23 +149,35 @@ def dashboard(request):
         file_name = request.session.get("pdf_name")
         quiz_list=[]
         flashcard_list=[]
-        try:
-            flashobj=flash(file_path)
-            flashcard_list=flashobj.generate_flashcard()
-            request.session['flashcards'] = flashcard_list
-            print(flashcard_list)
-      
-        except Exception as e:
-             print(f"flashcard failed due to {e}") 
 
-        try:
-            quizobj=QuizBuilder(file_path)
-            quiz_list=quizobj.generate_quiz()
-            request.session['quiz'] = quiz_list
-            print(quiz_list)
-    
-        except Exception as e:
-             print(f"quiz failed due to {e}") 
+        def generate_flashcards():
+            flashobj = flash(file_path)
+            return flashobj.generate_flashcard()
+
+        def generate_quiz():
+            quizobj = QuizBuilder(file_path)
+            return quizobj.generate_quiz()
+        
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = {
+                executor.submit(generate_flashcards): "flashcards",
+                executor.submit(generate_quiz): "quiz"
+            }
+
+            for future in as_completed(futures):
+                task = futures[future]
+                try:
+                    result = future.result()
+                    if task == "flashcards":
+                        flashcard_list = result
+                        request.session['flashcards'] = flashcard_list
+                        print("Flashcards generated:", flashcard_list)
+                    else:
+                        quiz_list = result
+                        request.session['quiz'] = quiz_list
+                        print("Quiz generated:", quiz_list)
+                except Exception as e:
+                    print(f"{task} failed due to {e}")
 
         return render(request,'dashboard.html',{'pdf_name':file_name})
 
