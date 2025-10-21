@@ -8,7 +8,7 @@ from tutorAi.components.embedding import embed_docs,similar_embedding
 from tutorAi.components.chat import should_retrieve
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
-from django.http import JsonResponse
+from django.http import JsonResponse,StreamingHttpResponse
 import json
 from langchain_google_genai import ChatGoogleGenerativeAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -124,18 +124,20 @@ def chat_with_pdf(request):
         })
         print(NEED_RETRIEVAL)
 
-        response_content = llm.invoke(prompt).content
-        assistant_response_content = re.sub(r'(\*|_)+', '', response_content)
+        def stream_response():
+            full_response = ""
+            for chunk in llm.stream(prompt):
+                token = chunk.content
+                full_response += token
+                clean_token = re.sub(r'(\*|_)+', '', token)
+                yield clean_token  # send partial text immediately
+            # Save chat to session after streaming completes
+            chat_hist_data.append({'type': 'human', 'content': user_query})
+            chat_hist_data.append({'type': 'ai', 'content': full_response})
+            request.session['chat_hist'] = chat_hist_data
+            request.session.modified = True
 
-
-        chat_hist_data.append({'type': 'human', 'content': user_query})
-        chat_hist_data.append({'type': 'ai', 'content': assistant_response_content})
-        
-        request.session['chat_hist'] = chat_hist_data
-        request.session.modified = True
-
-        # 5. Return JSON Response
-        return JsonResponse({'response': assistant_response_content})
+        return StreamingHttpResponse(stream_response(), content_type='text/plain')
     except Exception as e:
         print(f"\n[Chatbot View Error]: {e}\n")
         return JsonResponse({'error': 'An internal error occurred processing your request.'}, status=500)

@@ -35,9 +35,8 @@
 </section>
 
 <script>
-    // 1. Utility to get CSRF token (required for Django POST requests)
+    // === 1. CSRF Helper ===
     function getCookie(name) {
-        // ... (standard CSRF cookie retrieval function from previous steps) ...
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
@@ -53,7 +52,7 @@
     }
     const csrftoken = getCookie('csrftoken');
 
-    // 2. Display Message Function
+    // === 2. Display Message Utility ===
     function displayMessage(message, sender) {
         const chatBox = document.getElementById('chat-box');
         const msgElement = document.createElement('div');
@@ -63,71 +62,80 @@
         if (sender === 'You') {
             style += "background-color: #d1e7ff; margin-left: auto; width: fit-content; max-width: 80%; text-align: right;";
         } else {
-            style += "background-color: #e9ecef; margin-right: auto; width: fit-content; max-width: 80%;";
+            style += "background-color: #e9ecef; margin-right: auto; width: fit-content; max-width: 80%; white-space: pre-wrap;";
         }
 
         msgElement.setAttribute('style', style);
-        msgElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+        msgElement.innerHTML = `<strong>${sender}:</strong> <span class="msg-text">${message}</span>`;
         chatBox.appendChild(msgElement);
         chatBox.scrollTop = chatBox.scrollHeight;
-        return msgElement; // Return for possible loading state removal
+        return msgElement.querySelector('.msg-text');
     }
 
-    // 3. Send Message Function (Main Logic)
+    // === 3. Streaming Message Function ===
     async function sendMessage() {
         const inputElement = document.getElementById('chat-input');
         const query = inputElement.value.trim();
-
         if (!query) return;
 
         // A. Display user message
         displayMessage(query, 'You');
         inputElement.value = '';
-        inputElement.disabled = true; // Disable input while waiting
+        inputElement.disabled = true;
 
-        // B. Display loading message
-        const loadingElement = displayMessage('...', 'TutorAi');
-        
+        // B. Create placeholder for AI response
+        const aiMessageElement = displayMessage('', 'TutorAi');
+
         try {
-            const response = await fetch('{% url "chat_api" %}', { // Use the named URL
+            const response = await fetch('{% url "chat_api" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken 
+                    'X-CSRFToken': csrftoken
                 },
                 body: JSON.stringify({ 'query': query })
             });
 
-            const data = await response.json();
+            if (!response.ok || !response.body) {
+                aiMessageElement.textContent = "Error: Unable to get response.";
+                return;
+            }
 
-            // C. Remove loading message
-            loadingElement.remove();
+            // === STREAMING PART ===
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let partialText = '';
 
-            if (data.response) {
-                // D. Display assistant response
-                displayMessage(data.response, 'TutorAi');
-            } else if (data.error) {
-                displayMessage(`Error: ${data.error}`, 'System');
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                partialText += chunk;
+
+                // Update UI in real time
+                aiMessageElement.textContent = partialText;
+                const chatBox = document.getElementById('chat-box');
+                chatBox.scrollTop = chatBox.scrollHeight;
             }
 
         } catch (error) {
-            console.error('Fetch error:', error);
-            loadingElement.remove();
-            displayMessage('Connection failed. Please try again.', 'System');
+            console.error('Streaming fetch failed:', error);
+            aiMessageElement.textContent = "Connection failed. Please try again.";
         } finally {
-            // E. Re-enable input
             inputElement.disabled = false;
             inputElement.focus();
         }
     }
-    
-    // Optional: Send on Enter key
+
+    // === 4. Send on Enter ===
     document.getElementById('chat-input').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             sendMessage();
         }
     });
 </script>
+
 
 </body>
 
