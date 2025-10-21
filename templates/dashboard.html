@@ -10,13 +10,13 @@
 
     <!-- Left panel: Quiz & Flashcard links -->
     <div class="flex flex-col gap-6">
-        <h1 class="text-4xl font-bold text-blue-400 mb-6">Welcome to TutorAI!</h1>
+        <h1 class="text-6xl p-5 font-bold text-blue-400 mb-6">Welcome to TutorAI!</h1>
         <a href="{% url 'flashcards' %}" 
-           class="bg-blue-600 hover:bg-blue-700 w-[400px] h-[180px] font-bold flex items-center justify-center transition text-white px-12 py-4 rounded-2xl text-3xl font-semibold text-left">
+           class="bg-blue-600 hover:bg-blue-700  w-[400px] h-[180px] mb-6 font-bold flex items-center justify-center transition text-white px-12 py-4 rounded-2xl text-3xl font-semibold ">
            View Flashcards
         </a>
         <a href="{% url 'quiz' %}" 
-           class="bg-green-600 hover:bg-green-700 w-[400px] h-[180px] font-bold flex items-center justify-center transition text-white px-12 py-4 rounded-2xl text-3xl font-semibold text-left">
+           class="bg-green-600 hover:bg-green-700 w-[400px] h-[180px] mb-6 font-bold flex items-center justify-center transition text-white px-12 py-4 rounded-2xl text-3xl font-semibold ">
           Let's Take a Quiz
           
         </a>
@@ -24,7 +24,6 @@
 
     <!-- Right panel: Chat Section -->
     <section class="chat-section flex-grow max-w-3xl flex flex-col">
-        <h3 class="text-2xl font-bold text-blue-400 mb-4 text-center">Tutor Chat</h3>
         <div id="chat-box" class="flex-grow h-[580px] overflow-y-auto p-6 rounded-xl bg-gray-800 border border-gray-700 mb-4">
             <div class="mb-2 text-gray-400">
                 <strong>TutorAi:</strong> Hello! I've analyzed your PDF ({{ pdf_name }}). Ask me any question about the content!

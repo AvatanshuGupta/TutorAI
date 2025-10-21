@@ -17,7 +17,7 @@ import os
 import re
 load_dotenv()
 
-MAX_PDF_PAGE=40
+MAX_PDF_PAGE=30
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",api_key=os.getenv("GOOGLE_API_KEY_AVG"))
 llm2 = ChatGoogleGenerativeAI(model="gemma-3-27b",api_key=os.getenv("GOOGLE_API_KEY_LUC"))
@@ -45,43 +45,40 @@ def upload_pdf(request):
         pdf_file=request.FILES['pdf']
         fs=FileSystemStorage(location='media/temp')
         filename = fs.save(pdf_file.name, pdf_file)
-        print("1")
+        
 
         file_path = os.path.join(settings.MEDIA_ROOT, 'temp', filename)
         
-        print("2")
         try:
-            print("3")
+            
             docobj,page_count=pdfDocs(file_path)
-            print("4")
             if page_count>MAX_PDF_PAGE:
                 fs.delete(filename)
                 return render(request,'home.html',{
                     "error_message": f"PDF is too large. Max pages allowed is {MAX_PDF_PAGE}, but your file has {page_count} pages."
                 })
 
-            print("5")
             try:    
-                print("6")
+                
                 embed_docs(docobj) 
-                print("7")
+                
                 
             except Exception as embed_e:
                 print(f"Embedding failed due to: {embed_e}")
 
-            print("7")
+            
             request.session.flush()
             request.session["pdf_path"] = file_path
             request.session["pdf_name"] = pdf_file.name
-            print("8")
+            
             return redirect('dashboard')
-            print("9")
+            
         except Exception as e:
             fs.delete(filename)
             return render(request, "home.html", {
                 "error_message": "An error occurred during file processing"
             })
-        print("10")
+        
     return render(request, "home.html")
 
 
@@ -146,7 +143,7 @@ def chat_with_pdf(request):
 
 
 def dashboard(request):
-        print("hello")
+        
         file_path = request.session.get("pdf_path")
         file_name = request.session.get("pdf_name")
         quiz_list=[]
@@ -173,11 +170,11 @@ def dashboard(request):
                     if task == "flashcards":
                         flashcard_list = result
                         request.session['flashcards'] = flashcard_list
-                        print("Flashcards generated:", flashcard_list)
+                    
                     else:
                         quiz_list = result
                         request.session['quiz'] = quiz_list
-                        print("Quiz generated:", quiz_list)
+                        
                 except Exception as e:
                     print(f"{task} failed due to {e}")
 
